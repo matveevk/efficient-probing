@@ -5,7 +5,57 @@ from typing import Dict, List, Optional, Tuple
 RANDOM_STATE = 3407
 
 
-class WordContentDataset(Dataset):
+class ProbingDataset(Dataset):
+    """
+    Dataset for probing task.
+    See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/tree_depth.txt
+    """
+    def __init__(
+        self,
+        filepath,
+        sep='\t',
+        columns=None,
+        subset=None,
+        shuffle=False,
+        random_state=RANDOM_STATE
+    ):
+        """
+        :param columns: how to name the columns of pd
+        :param subset: tr, va, te, or None for all
+        """
+        super().__init__()
+        # self.dataset = pd.read_csv(filepath, sep=sep, header=None if columns else 0)  # this is buggy
+        dataframe = {
+            'subset': [],
+            'label': [],
+            'text': [],
+        }
+        word2encoding = {}
+        for row in open(filepath, 'r'):
+            row_subset, row_label, row_text = row.split('\t')
+            dataframe['subset'].append(row_subset)
+            dataframe['label'].append(row_label)
+            dataframe['text'].append(row_text)
+        self.dataset = pd.DataFrame.from_dict(dataframe)
+
+        if columns is not None:
+            self.dataset.columns = columns
+        if subset is not None:
+            self.dataset = self.dataset[self.dataset.subset == subset]
+        if shuffle:
+            self.dataset = sklearn.utils.shuffle(self.dataset, random_state=random_state)
+        self.dataset = self.dataset.reset_index(drop=True)
+
+    def __len__(self):
+        return self.dataset.shape[0]
+    
+    def __getitem__(self, idx):
+        text = self.dataset.text[idx]
+        label = int(self.dataset.label[idx])
+        return text.strip(), label
+
+
+class WordContentDataset(ProbingDataset):
       """
       Dataset for Word Content (WC)
       See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/word_content.txt
@@ -50,15 +100,6 @@ class WordContentDataset(Dataset):
         if shuffle:
             self.dataset = sklearn.utils.shuffle(self.dataset, random_state=random_state)
         self.dataset = self.dataset.reset_index(drop=True)
-
-    def __len__(self) -> int:
-        return self.dataset.shape[0]
-    
-    def __getitem__(self, idx: int) -> Tuple[str, int]:
-        text = self.dataset.text[idx]
-        label = int(self.dataset.label_encoded[idx])
-        return text.strip(), label
-
 
 
 if __name__ == '__main__':
