@@ -1,6 +1,6 @@
 import sklearn
 from torch.utils.data import DataLoader, Dataset
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 RANDOM_STATE = 3407
 
@@ -12,12 +12,12 @@ class ProbingDataset(Dataset):
     """
     def __init__(
         self,
-        filepath,
-        sep='\t',
-        columns=None,
-        subset=None,
-        shuffle=False,
-        random_state=RANDOM_STATE
+        filepath: str,
+        sep: str = '\t',
+        columns: Optional[Iterable[str]] = None,
+        subset: Optional[str] = None,
+        shuffle: bool = False,
+        random_state: int = RANDOM_STATE,
     ):
         """
         :param columns: how to name the columns of pd
@@ -31,11 +31,12 @@ class ProbingDataset(Dataset):
             'text': [],
         }
         word2encoding = {}
-        for row in open(filepath, 'r'):
-            row_subset, row_label, row_text = row.split('\t')
-            dataframe['subset'].append(row_subset)
-            dataframe['label'].append(row_label)
-            dataframe['text'].append(row_text)
+        with open(filepath, 'r') as f:
+            for row in f:
+                row_subset, row_label, row_text = map(str.strip, row.split('\t'))
+                dataframe['subset'].append(row_subset)
+                dataframe['label'].append(row_label)
+                dataframe['text'].append(row_text)
         self.dataset = pd.DataFrame.from_dict(dataframe)
 
         if columns is not None:
@@ -64,7 +65,7 @@ class WordContentDataset(ProbingDataset):
         self,
         filepath: str,
         sep: str = '\t',
-        columns: Optional[List[str]] = None,
+        columns: Optional[Iterable[str]] = None,
         subset: Optional[str] = None,
         shuffle: bool = False,
         random_state: int = RANDOM_STATE,
@@ -83,14 +84,16 @@ class WordContentDataset(ProbingDataset):
             'label_encoded': []
         }
         self.word2encoding = word2encoding or {}
-        for row in open(filepath, 'r'):
-            row_subset, row_label, row_text = row.split('\t')
-            dataframe['subset'].append(row_subset)
-            dataframe['label'].append(row_label)
-            dataframe['text'].append(row_text)
-            if row_label not in self.word2encoding:
-                self.word2encoding[row_label] = len(self.word2encoding)
-            dataframe['label_encoded'].append(self.word2encoding[row_label])
+        
+        with open(filepath, 'r') as f:
+            for row in f:
+                row_subset, row_label, row_text = map(str.strip, row.split('\t'))
+                dataframe['subset'].append(row_subset)
+                dataframe['label'].append(row_label)
+                dataframe['text'].append(row_text)
+                if row_label not in self.word2encoding:
+                    self.word2encoding[row_label] = len(self.word2encoding)
+                dataframe['label_encoded'].append(self.word2encoding[row_label])
         self.dataset = pd.DataFrame.from_dict(dataframe)
 
         if columns is not None:
@@ -100,6 +103,40 @@ class WordContentDataset(ProbingDataset):
         if shuffle:
             self.dataset = sklearn.utils.shuffle(self.dataset, random_state=random_state)
         self.dataset = self.dataset.reset_index(drop=True)
+
+
+class SampleDataset(Dataset):
+    """
+    Creates dataset from multiple probing sources, randomly sampling the same amount from each of them
+    """
+    def __init__(
+        self,
+        filepaths: Iterable[str],
+        n_samples: int = 1000,
+        sep: str = '\t',
+        random_state: int = RANDOM_STATE,
+    ):
+        """
+        :param columns: how to name the columns of pd
+        :param subset: tr, va, te, or None for all
+        """
+        super().__init__()
+        self.sample_sentences = []
+        for filepath in filepaths:
+            sentences = []
+            with open(filepath, 'r') as f:
+                for row in f:
+                    row_subset, row_label, row_text = map(str.strip, row.split('\t'))
+                    sentences.append(row_text)
+            random.seed(random_state)
+            sample_sentences = random.sample(sentences, n_samples)
+            self.sample_sentences += sample_sentences
+
+    def __len__(self) -> int:
+        return len(self.sample_sentences)
+    
+    def __getitem__(self, idx: int) -> str:
+        return self.sample_sentences[idx]
 
 
 if __name__ == '__main__':
