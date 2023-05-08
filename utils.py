@@ -2,7 +2,7 @@ import numpy as np
 import random
 import torch
 from torch.utils.data import DataLoader 
-from transformers import BertModel, BertTokenizer, DistilBertModel, DistilBertTokenizer, PreTrainedModel, PreTrainedTokenizer
+from transformers import AutoModel, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 from typing import List, Tuple, Type
 
 
@@ -19,19 +19,19 @@ def set_seed(random_state: int = RANDOM_STATE) -> None:
 
 def get_pretrained(
         model_name: str,
-        model_class: Type[PreTrainedModel] = BertModel,
-        tokenizer_class: Type[PreTrainedTokenizer] = BertTokenizer,
+        model_class: Type[PreTrainedModel] = AutoModel,
+        tokenizer_class: Type[PreTrainedTokenizer] = AutoTokenizer,
         device: str = DEVICE
     ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """ Returns huggingface model and tokenizer for model_name """
-    tokenizer = tokenizer_class.from_pretrained(model_name)
+    tokenizer = tokenizer_class.from_pretrained(model_name, use_fast=True)
     model = model_class.from_pretrained(model_name, output_hidden_states=True)
-    model = model.to(device)
+    model = model.to(device).eval()
     return model, tokenizer
 
 
 def retrieve_embeddings_and_labels_bert(
-        dataloader: Dataloader,
+        dataloader: DataLoader,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
         sentence_aggregation: str = 'mean',
