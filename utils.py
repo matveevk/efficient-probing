@@ -41,7 +41,7 @@ def retrieve_embeddings_and_labels_bert(
     model = model.to(device).eval()
     for texts, labels in dataloader:
         with torch.no_grad():
-            inputs = tokenizer(texts, add_special_tokens=True, padding='longest', return_tensors='pt').to(DEVICE)
+            inputs = tokenizer(texts, add_special_tokens=True, padding='longest', return_tensors='pt').to(device)
             outputs = model(**inputs)
             if sentence_aggregation == 'sum':
                 layer_embs = [layer_emb.sum(axis=1).squeeze().cpu().numpy() for layer_emb in outputs.hidden_states]  # for sum of embeddings
