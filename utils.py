@@ -46,15 +46,15 @@ def retrieve_embeddings_and_labels_bert(
             inputs = tokenizer(texts, add_special_tokens=True, padding='longest', return_tensors='pt').to(device)
             outputs = model(**inputs)
             if sentence_aggregation == 'sum':
-                layer_embs = [layer_emb.sum(axis=1).squeeze().cpu().numpy() for layer_emb in outputs.hidden_states]  # for sum of embeddings
+                layer_embs = [layer_emb.sum(axis=1).squeeze() for layer_emb in outputs.hidden_states]  # for sum of embeddings
             elif sentence_aggregation == 'cls':
-                layer_embs = [layer_emb[:, 0, :].cpu().numpy() for layer_emb in outputs.hidden_states]  # for cls token embedding
+                layer_embs = [layer_emb[:, 0, :] for layer_emb in outputs.hidden_states]  # for cls token embedding
             elif sentence_aggregation == 'mean':
                 layer_embs = []
                 for layer_emb in outputs.hidden_states:
                     mask = inputs.attention_mask.unsqueeze(-1)  # to correctly divide the sum
                     aggregated = torch.sum(layer_emb * mask, axis=1) / torch.clamp(mask.sum(axis=1), min=EPS)
-                    layer_embs.append(aggregated.cpu().numpy())
+                    layer_embs.append(aggregated)
             else:
                 raise NotImplementedError('not implemented sentence_aggregation {} in retrieve_embeddings_and_labels_bert'.format(sentence_aggregation))
             yield layer_embs, labels.tolist()
