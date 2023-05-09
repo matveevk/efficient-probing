@@ -25,6 +25,8 @@ def get_pretrained(
     ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """ Returns huggingface model and tokenizer for model_name """
     tokenizer = tokenizer_class.from_pretrained(model_name, use_fast=True)
+    if 'gpt' in model_name:
+        tokenizer.pad_token = tokenizer.eos_token
     model = model_class.from_pretrained(model_name, output_hidden_states=True)
     model = model.to(device).eval()
     return model, tokenizer
