@@ -115,6 +115,17 @@ class TenseDataset(ProbingDataset):
         text = self.dataset.text[idx]
         label = 0 if self.dataset.label[idx] == 'PAST' else 1
         return text.strip(), label
+    
+    
+class TreeDepthDataset(ProbingDataset):
+    """
+        Dataset for Tree Depth (Tense)
+        See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/tree_depth.txt
+    """
+    def __getitem__(self, idx):
+        text = self.dataset.text[idx]
+        label = int(self.dataset.label[idx]) - 5
+        return text.strip(), label
 
 
 class SampleDataset(Dataset):
