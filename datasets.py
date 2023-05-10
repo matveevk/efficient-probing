@@ -106,6 +106,17 @@ class WordContentDataset(ProbingDataset):
         self.dataset = self.dataset.reset_index(drop=True)
 
 
+class TenseDataset(ProbingDataset):
+    """
+        Dataset for Past Present (Tense)
+        See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/past_present.txt
+    """
+    def __getitem__(self, idx):
+        text = self.dataset.text[idx]
+        label = 0 if self.dataset.label[idx] == 'PAST' else 1
+        return text.strip(), label
+
+
 class SampleDataset(Dataset):
     """
     Creates dataset from multiple probing sources, randomly sampling the same amount from each of them
