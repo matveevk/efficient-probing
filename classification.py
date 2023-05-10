@@ -5,7 +5,7 @@ from numpy.typing import ArrayLike
 from scipy.stats import pearsonr, spearmanr
 from sklearn.base import ClassifierMixin
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, average_precision_score, f1_score, roc_auc_score
 from time import time, sleep
 from typing import Any, Callable, Dict, Type
 
@@ -55,12 +55,14 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
 
     f1_train = f1_score(y_train, y_train_pred, average=average)
     roc_auc_train = roc_auc_score(y_train, y_train_pred_proba, **roc_auc_params)
+    roc_pr_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params[average])
     acc_train = accuracy_score(y_train, y_train_pred)
     f1_test = f1_score(y_test, y_test_pred, average=average)
     roc_auc_test = roc_auc_score(y_test, y_test_pred_proba, **roc_auc_params)
+    roc_pr_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params[average])
     acc_test = accuracy_score(y_test, y_test_pred)
     n_iter = lr.n_iter_
-    return f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter
+    return f1_train, roc_auc_train, roc_pr_train, acc_train, f1_test, roc_auc_test, roc_pr_test, acc_test, n_iter
 
 
 # Sklearn probing experiment
