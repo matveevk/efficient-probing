@@ -7,7 +7,7 @@ from sklearn.base import ClassifierMixin
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score, roc_auc_score
 from time import time, sleep
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, Optional, Type
 
 
 
