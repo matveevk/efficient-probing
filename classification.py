@@ -81,7 +81,8 @@ def experiment(
     # dataset_X=None,
     # dataset_y=None,
     # sentence_embeddings_func=get_sentence_embs,
-    verbose: bool = True
+    all_layers: bool = True,
+    verbose: bool = True,
 ):
     """ Runs one probing classification experiment with given parameters. Parameters for the classifier are set in the config dict """
     if verbose:
@@ -91,20 +92,24 @@ def experiment(
 
     if verbose:
         print('probing...')
-    layers = list(range(layers_cnt))
-    f1s_train = []
-    f1s_test = []
-    accs_train = []
-    accs_test = []
-    learn_times = []
-    n_iters = []
-    lrs = []
+    layers = list(range(layers_cnt)) if all_layers else [layers_cnt - 1]
+    scores = {
+        'f1_train': [],
+        'f1_test': [],
+        'roc_auc_train': [],
+        'roc_auc_test': [],
+        'acc_train': [],
+        'acc_test': [],
+        'training_time': [],
+        'n_iter': [],
+        'lrs': [],
+    }
     for layer in layers:
         start_time = time()
         lr = classifier_func(X_train[layer, :, :], y_train, X_test[layer, :, :], y_test, classifier_config)
-        learn_time = time() - start_time
+        training_time = time() - start_time
 
-        f1_train, acc_train, f1_test, acc_test, n_iter = sklearn_score(
+        f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter = sklearn_score(
             lr,
             X_train[layer, :, :],
             y_train,
@@ -113,16 +118,18 @@ def experiment(
             binary=is_binary
         )
         if verbose:
-            print(f'layer {layer + 1}:\tf1 train {f1_train:.4f},\taccuracy train {acc_train:.4f}\tf1 test {f1_test:.4f},\taccuracy test {acc_test:.4f},\ttime {learn_time:.4f},\titers {n_iter}')
+            print(f'layer {layer + 1}:\tf1 train {f1_train:.4f},\taccuracy train {acc_train:.4f}\tf1 test {f1_test:.4f},\taccuracy test {acc_test:.4f},\ttime {training_time:.4f},\titers {n_iter}')
 
-        f1s_train.append(f1_train)
-        f1s_test.append(f1_test)
-        accs_train.append(acc_train)
-        accs_test.append(acc_test)
-        learn_times.append(learn_time)
-        n_iters.append(n_iter)
-        lrs.append(lr)
-    return f1s_train, f1s_test, accs_train, accs_test, learn_times, n_iters, lrs
+        scores['f1_train'].append(f1_train)
+        scores['f1_test'].append(f1_test)
+        scores['roc_auc_train'].append(roc_auc_train)
+        scores['roc_auc_test'].append(roc_auc_test)
+        scores['acc_train'].append(acc_train)
+        scores['acc_test'].append(acc_test)
+        scores['training_time'].append(training_time)
+        scores['n_iter'].append(n_iter)
+        scores['lrs'].append(lr)
+    return scores
 
 
 def show_exp(f1s: Iterable[float], accs: Iterable[float], title: str) -> Figure:
