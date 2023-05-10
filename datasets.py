@@ -31,7 +31,6 @@ class ProbingDataset(Dataset):
             'label': [],
             'text': [],
         }
-        word2encoding = {}
         with open(filepath, 'r') as f:
             for row in f:
                 row_subset, row_label, row_text = map(str.strip, row.split('\t'))
@@ -58,52 +57,29 @@ class ProbingDataset(Dataset):
 
 
 class WordContentDataset(ProbingDataset):
-      """
-      Dataset for Word Content (WC)
-      See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/word_content.txt
-      """
+    """
+    Dataset for Word Content (WC)
+    See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/word_content.txt
+    """
     def __init__(
-        self,
-        filepath: str,
-        sep: str = '\t',
-        columns: Optional[Iterable[str]] = None,
-        subset: Optional[str] = None,
-        shuffle: bool = False,
-        random_state: int = RANDOM_STATE,
+        self, *args,
         word2encoding: Optional[Dict[str, int]] = None,  # encoding dictionary from train dataset
+        **kwargs,
     ):
-        """
-        :param columns: how to name the columns of pd
-        :param subset: tr, va, te, or None for all
-        """
-        super().__init__()
-        # self.dataset = pd.read_csv(filepath, sep=sep, header=None if columns else 0)  # this is buggy
-        dataframe = {
-            'subset': [],
-            'label': [],
-            'text': [],
-            'label_encoded': []
-        }
-        self.word2encoding = word2encoding or {}
-        
-        with open(filepath, 'r') as f:
-            for row in f:
-                row_subset, row_label, row_text = map(str.strip, row.split('\t'))
-                dataframe['subset'].append(row_subset)
-                dataframe['label'].append(row_label)
-                dataframe['text'].append(row_text)
-                if row_label not in self.word2encoding:
-                    self.word2encoding[row_label] = len(self.word2encoding)
-                dataframe['label_encoded'].append(self.word2encoding[row_label])
-        self.dataset = pd.DataFrame.from_dict(dataframe)
+        super().__init__(*args, **kwargs)
 
-        if columns is not None:
-            self.dataset.columns = columns
-        if subset is not None:
-            self.dataset = self.dataset[self.dataset.subset == subset]
-        if shuffle:
-            self.dataset = sklearn.utils.shuffle(self.dataset, random_state=random_state)
-        self.dataset = self.dataset.reset_index(drop=True)
+        self.word2encoding = word2encoding
+
+        if self.word2encoding is None:
+            self.word2encoding = {}
+            for label in self.dataset.label:
+                if label not in self.word2encoding:
+                    self.word2encoding[label] = len(self.word2encoding)
+
+    def __getitem__(self, idx: int):
+        text = self.dataset.text[idx]
+        label = self.word2encoding[self.dataset.label[idx]]
+        return text.strip(), label
 
 
 class TenseDataset(ProbingDataset):
