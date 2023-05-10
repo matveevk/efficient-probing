@@ -119,13 +119,21 @@ class TenseDataset(ProbingDataset):
     
 class TreeDepthDataset(ProbingDataset):
     """
-        Dataset for Tree Depth (Tense)
+        Dataset for Tree Depth
         See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/tree_depth.txt
     """
     def __getitem__(self, idx):
         text = self.dataset.text[idx]
         label = int(self.dataset.label[idx]) - 5
         return text.strip(), label
+
+    
+class SentLenDataset(ProbingDataset):
+    """
+        Dataset for Sentence Length
+        See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/sentence_length.txt
+    """
+    pass
 
 
 class SampleDataset(Dataset):
