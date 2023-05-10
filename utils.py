@@ -39,7 +39,7 @@ def retrieve_embeddings_and_labels(
         sentence_aggregation: str = 'mean',
         device: str = DEVICE
     ) -> Tuple[List, List]:
-    """ Converts batches of sentences to batches of embeddings from a BERT-like model """
+    """ Converts batches of sentences to batches of embeddings """
     model = model.to(device).eval()
     for texts, labels in dataloader:
         with torch.no_grad():
@@ -55,6 +55,15 @@ def retrieve_embeddings_and_labels(
                     mask = inputs.attention_mask.unsqueeze(-1)  # to correctly divide the sum
                     aggregated = torch.sum(layer_emb * mask, axis=1) / torch.clamp(mask.sum(axis=1), min=EPS)
                     layer_embs.append(aggregated)
+            elif sentence_aggregation == 'max':
+                layer_embs = []
+                for layer_emb in outputs.hidden_states:
+                    mask = inputs.attention_mask.unsqueeze(-1).expand(layer_emb.size())  # to correctly divide the sum
+                    layer_emb[mask == 0] = -INF
+                    aggregated = torch.max(layer_emb, 1)[0]
+                    layer_embs.append(aggregated)
+            elif sentence_aggregation == 'eos':
+                layer_embs = [layer_emb[:, -1, :] for layer_emb in outputs.hidden_states]  # for eos token embedding
             else:
                 raise NotImplementedError('not implemented sentence_aggregation {} in retrieve_embeddings_and_labels_bert'.format(sentence_aggregation))
             yield layer_embs, labels.tolist()
