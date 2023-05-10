@@ -5,7 +5,7 @@ from numpy.typing import ArrayLike
 from scipy.stats import pearsonr, spearmanr
 from sklearn.base import ClassifierMixin
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from time import time, sleep
 from typing import Any, Callable, Dict, Type
 
@@ -34,17 +34,22 @@ def sgd(X_train: ArrayLike, y_train: ArrayLike, X_test: ArrayLike, y_test: Array
 def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X_test: ArrayLike, y_test: ArrayLike, binary: bool = True) -> Tuple[float, float, float, float, float]:
     """
         Снимает скоры с sklearn-классификатора lr, возвращает
-        f1 train, acc train, f1 test, acc test, n_iter on train.
-        Бинарность классификации задаётся параметром binary
+        :param lr: classifier
+        :param binary: whether the target is binary
+        :return: f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter
     """
-    average = 'binary' if binary else 'macro'
+    average = 'binary' if binary else 'weighted'
     y_train_pred = lr.predict(X_train)
     y_test_pred = lr.predict(X_test)
-    return f1_score(y_train, y_train_pred, average=average), \
-        accuracy_score(y_train, y_train_pred), \
-        f1_score(y_test, y_test_pred, average=average), \
-        accuracy_score(y_test, y_test_pred), \
-        lr.n_iter_
+
+    f1_train = f1_score(y_train, y_train_pred, average=average)
+    roc_auc_train = roc_auc_score(y_train, lr.predict_proba(X_train), average=average, multi_class='ovr' if not binary else 'raise', average=average)
+    acc_train = accuracy_score(y_train, y_train_pred)
+    f1_test = f1_score(y_test, y_test_pred, average=average)
+    roc_auc_test = roc_auc_score(y_test, lr.predict_proba(X_test), average=average, multi_class='ovr' if not binary else 'raise', average=average)
+    acc_test = accuracy_score(y_test, y_test_pred)
+    n_iter = lr.n_iter_
+    return f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter
 
 
 # Sklearn probing experiment
