@@ -40,13 +40,24 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
     """
     average = 'binary' if binary else 'weighted'
     y_train_pred = lr.predict(X_train)
+    y_train_pred_proba = lr.predict_proba(X_train)
     y_test_pred = lr.predict(X_test)
+    y_test_pred_proba = lr.predict_proba(X_test)
+    if binary:
+        y_train_pred_proba = y_train_pred_proba[:, 1]
+        y_test_pred_proba = y_test_pred_proba[:, 1]
+
+
+    roc_auc_params = {
+        'average': 'weighted' if not binary else None,
+        'multi_class': 'ovr' if not binary else 'raise',
+    }
 
     f1_train = f1_score(y_train, y_train_pred, average=average)
-    roc_auc_train = roc_auc_score(y_train, lr.predict_proba(X_train), average=average, multi_class='ovr' if not binary else 'raise', average=average)
+    roc_auc_train = roc_auc_score(y_train, y_train_pred_proba, **roc_auc_params)
     acc_train = accuracy_score(y_train, y_train_pred)
     f1_test = f1_score(y_test, y_test_pred, average=average)
-    roc_auc_test = roc_auc_score(y_test, lr.predict_proba(X_test), average=average, multi_class='ovr' if not binary else 'raise', average=average)
+    roc_auc_test = roc_auc_score(y_test, y_test_pred_proba, **roc_auc_params)
     acc_test = accuracy_score(y_test, y_test_pred)
     n_iter = lr.n_iter_
     return f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter
