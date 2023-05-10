@@ -32,7 +32,7 @@ def get_pretrained(
     return model, tokenizer
 
 
-def retrieve_embeddings_and_labels_bert(
+def retrieve_embeddings_and_labels(
         dataloader: DataLoader,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
@@ -58,3 +58,34 @@ def retrieve_embeddings_and_labels_bert(
             else:
                 raise NotImplementedError('not implemented sentence_aggregation {} in retrieve_embeddings_and_labels_bert'.format(sentence_aggregation))
             yield layer_embs, labels.tolist()
+
+
+def retrieve_embeddings_and_labels_bert(*args, **kwargs) -> Tuple[List, List]:
+    """ [Redundant] Same as retrieve_embeddings_and_labels """
+    return retrieve_embeddings_and_labels(*args, **kwargs)
+
+
+def build_data_tensor(dataloader: DataLoader, **retriever_params) -> Tuple[torch.Tensor, torch.Tensor]:
+    """ Runs dataloader through retriever function.
+        :param dataloader: dataloader from ProbingDataset
+        :param retriever_params: params passed to retrieve_embeddings_and_labels_bert
+        :return: torch.tensor with sentence embeddings, of shape <n_layers, n_samples, n_dim>, and torch.tensor of labels
+    """
+    stack_embs = []
+    stack_labels = []
+    for embs, labels in tqdm(retrieve_embeddings_and_labels(dataloader, **retriever_params)):
+        stack_embs.append(torch.stack(embs))
+        stack_labels += labels
+    X = torch.concatenate(stack_embs, axis=1)
+    y = torch.tensor(stack_labels)
+    return X, y
+
+
+def build_data_ndarray(dataloader: DataLoader, **retriever_params) -> Tuple[np.ndarray, np.array]:
+    """ Runs dataloader through retriever function.
+        :param dataloader: dataloader from ProbingDataset
+        :param retriever_params: params passed to retrieve_embeddings_and_labels_bert
+        :return: np.ndarray with sentence embeddings, of shape <n_layers, n_samples, n_dim>, and np.array of labels
+    """
+    X, y = build_data_tensor(dataloader, **retriever_params)
+    return X.cpu().numpy(), y.cpu().numpy()
