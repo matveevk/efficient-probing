@@ -55,14 +55,14 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
 
     f1_train = f1_score(y_train, y_train_pred, average=average)
     roc_auc_train = roc_auc_score(y_train, y_train_pred_proba, **roc_auc_params)
-    roc_pr_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params[average])
+    pr_auc_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params[average])
     acc_train = accuracy_score(y_train, y_train_pred)
     f1_test = f1_score(y_test, y_test_pred, average=average)
     roc_auc_test = roc_auc_score(y_test, y_test_pred_proba, **roc_auc_params)
-    roc_pr_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params[average])
+    pr_auc_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params[average])
     acc_test = accuracy_score(y_test, y_test_pred)
     n_iter = lr.n_iter_
-    return f1_train, roc_auc_train, roc_pr_train, acc_train, f1_test, roc_auc_test, roc_pr_test, acc_test, n_iter
+    return f1_train, roc_auc_train, pr_auc_train, acc_train, f1_test, roc_auc_test, pr_auc_test, acc_test, n_iter
 
 
 # Sklearn probing experiment
@@ -111,7 +111,7 @@ def experiment(
         lr = classifier_func(X_train[layer, :, :], y_train, X_test[layer, :, :], y_test, classifier_config)
         training_time = time() - start_time
 
-        f1_train, roc_auc_train, acc_train, f1_test, roc_auc_test, acc_test, n_iter = sklearn_score(
+        f1_train, roc_auc_train, pr_auc_train, acc_train, f1_test, roc_auc_test, pr_auc_test, acc_test, n_iter = sklearn_score(
             lr,
             X_train[layer, :, :],
             y_train,
@@ -126,6 +126,8 @@ def experiment(
         scores['f1_test'].append(f1_test)
         scores['roc_auc_train'].append(roc_auc_train)
         scores['roc_auc_test'].append(roc_auc_test)
+        scores['pr_auc_train'].append(pr_auc_train)
+        scores['pr_auc_test'].append(pr_auc_test)
         scores['acc_train'].append(acc_train)
         scores['acc_test'].append(acc_test)
         scores['training_time'].append(training_time)
