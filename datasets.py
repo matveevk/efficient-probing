@@ -48,10 +48,10 @@ class ProbingDataset(Dataset):
             self.dataset = sklearn.utils.shuffle(self.dataset, random_state=random_state)
         self.dataset = self.dataset.reset_index(drop=True)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.dataset.shape[0]
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         text = self.dataset.text[idx]
         label = int(self.dataset.label[idx])
         return text.strip(), label
@@ -111,7 +111,7 @@ class TenseDataset(ProbingDataset):
         Dataset for Past Present (Tense)
         See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/past_present.txt
     """
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         text = self.dataset.text[idx]
         label = 0 if self.dataset.label[idx] == 'PAST' else 1
         return text.strip(), label
@@ -122,7 +122,7 @@ class TreeDepthDataset(ProbingDataset):
         Dataset for Tree Depth
         See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/tree_depth.txt
     """
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         text = self.dataset.text[idx]
         label = int(self.dataset.label[idx]) - 5
         return text.strip(), label
@@ -134,6 +134,59 @@ class SentLenDataset(ProbingDataset):
         See example file: https://raw.githubusercontent.com/facebookresearch/SentEval/main/data/probing/sentence_length.txt
     """
     pass
+
+
+class TopConstituentsDataset(ProbingDataset):
+    """
+        Dataset for TopConstituents (WC)
+        See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/top_constituents.txt
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        all_labels = [
+            'ADVP_NP_VP_.',
+            'CC_ADVP_NP_VP_.',
+            'CC_NP_VP_.',
+            'IN_NP_VP_.',
+            'NP_ADVP_VP_.',
+            'NP_NP_VP_.',
+            'NP_PP_.',
+            'NP_VP_.',
+            'OTHER',
+            'PP_NP_VP_.',
+            'RB_NP_VP_.',
+            'SBAR_NP_VP_.',
+            'SBAR_VP_.',
+            'S_CC_S_.',
+            'S_NP_VP_.',
+            'S_VP_.',
+            'VBD_NP_VP_.',
+            'VP_.',
+            'WHADVP_SQ_.',
+            'WHNP_SQ_.',
+        ]
+        self.label_mapping = dict(zip(all_labels, range(len(all_labels))))
+
+    def __getitem__(self, idx: int):
+        text = self.dataset.text[idx]
+        label = self.label_mapping[self.dataset.label[idx]]
+        return text.strip(), label
+
+
+class OddManOutDataset(ProbingDataset):
+    """
+        Dataset for Odd-Man-Out (SOMO)
+        See example file: https://github.com/facebookresearch/SentEval/blob/main/data/probing/odd_man_out.txt
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        all_labels = ['O', 'C']
+        self.label_mapping = dict(zip(all_labels, range(len(all_labels))))
+
+    def __getitem__(self, idx: int):
+        text = self.dataset.text[idx]
+        label = self.label_mapping[self.dataset.label[idx]]
+        return text.strip(), label
 
 
 class SampleDataset(Dataset):
