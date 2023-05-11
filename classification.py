@@ -55,11 +55,11 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
 
     f1_train = f1_score(y_train, y_train_pred, average=average)
     roc_auc_train = roc_auc_score(y_train, y_train_pred_proba, **roc_auc_params)
-    pr_auc_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params[average])
+    pr_auc_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params['average'])
     acc_train = accuracy_score(y_train, y_train_pred)
     f1_test = f1_score(y_test, y_test_pred, average=average)
     roc_auc_test = roc_auc_score(y_test, y_test_pred_proba, **roc_auc_params)
-    pr_auc_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params[average])
+    pr_auc_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params['average'])
     acc_test = accuracy_score(y_test, y_test_pred)
     n_iter = lr.n_iter_
     return f1_train, roc_auc_train, pr_auc_train, acc_train, f1_test, roc_auc_test, pr_auc_test, acc_test, n_iter
@@ -100,6 +100,8 @@ def experiment(
         'f1_test': [],
         'roc_auc_train': [],
         'roc_auc_test': [],
+        'pr_auc_train': [],
+        'pr_auc_test': [],
         'acc_train': [],
         'acc_test': [],
         'training_time': [],
