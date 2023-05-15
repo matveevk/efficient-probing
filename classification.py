@@ -1,5 +1,7 @@
+import json
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
 from scipy.stats import pearsonr, spearmanr
@@ -55,13 +57,13 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
 
     f1_train = f1_score(y_train, y_train_pred, average=average)
     roc_auc_train = roc_auc_score(y_train, y_train_pred_proba, **roc_auc_params)
-    pr_auc_train = average_precision_score(y_train, y_train_pred_proba, average=roc_auc_params['average'])
+    pr_auc_train = 0 if not binary else average_precision_score(y_train, y_train_pred_proba)
     acc_train = accuracy_score(y_train, y_train_pred)
     f1_test = f1_score(y_test, y_test_pred, average=average)
     roc_auc_test = roc_auc_score(y_test, y_test_pred_proba, **roc_auc_params)
-    pr_auc_test = average_precision_score(y_test, y_test_pred_proba, average=roc_auc_params['average'])
+    pr_auc_test = 0 if not binary else average_precision_score(y_test, y_test_pred_proba)
     acc_test = accuracy_score(y_test, y_test_pred)
-    n_iter = lr.n_iter_
+    n_iter = lr.n_iter_ if type(lr.n_iter_) == int else lr.n_iter_.item()
     return f1_train, roc_auc_train, pr_auc_train, acc_train, f1_test, roc_auc_test, pr_auc_test, acc_test, n_iter
 
 
@@ -138,6 +140,56 @@ def experiment(
     return scores
 
 
+def run_experiment_from_pc(
+        folder: str,
+        classifier_func: Callable,
+        classifier_config: dict,
+        all_layers: bool = True,
+        standartize_data: bool = False,
+        verbose: bool = True,
+        sample_idx: Optional[Iterable] = None
+    ):
+    """ loads vectors, trains classifier and returns scores """
+    X_train = np.load('{}/X_train.npy'.format(folder))
+    y_train = np.load('{}/y_train.npy'.format(folder))
+    X_test = np.load('{}/X_test.npy'.format(folder))
+    y_test = np.load('{}/y_test.npy'.format(folder))
+
+    if standartize_data:
+        X_train_std = []  # holder for standartized train data
+        X_test_std = []  # holder for standartized test data
+        for layer in range(X_train.shape[0]):
+            # transforming vectors from each layer
+            ss_i = StandardScaler(with_mean=True, with_std=True)
+            X_train_i = ss_i.fit_transform(X_train[layer])
+            X_test_i = ss_i.transform(X_test[layer])
+            X_train_std.append(X_train_i)
+            X_test_std.append(X_test_i)
+        X_train = np.stack(X_train_std)
+        X_test = np.stack(X_test_std)
+        # free memory implicitly
+        del X_train_std
+        del X_test_std
+        gc.collect()
+
+    if sample_idx is not None:
+        sample_idx = np.asarray(sample_idx)
+        X_train = X_train[:, sample_idx]
+        y_train = y_train[sample_idx]
+    
+    scores = experiment(classifier_func, classifier_config, X_train, y_train, X_test, y_test,
+                        all_layers=all_layers, verbose=verbose)
+
+    # free memory implicitly
+    del X_train
+    del y_train
+    del X_test
+    del y_test
+    gc.collect()
+
+    return scores
+
+
 def show_exp(f1s: Iterable[float], accs: Iterable[float], title: str) -> Figure:
     """ Рисует графики скоров """
     fig = plt.figure()
@@ -150,3 +202,16 @@ def show_exp(f1s: Iterable[float], accs: Iterable[float], title: str) -> Figure:
     plt.legend()
     plt.show()
     return fig
+
+
+if __name__ == '__main__':
+    config = {
+        'tol': 1e-3,
+        'max_iter': 100,
+        'solver': 'sag',
+        'random_state': RANDOM_STATE,
+        'verbose': True,
+    }
+    folder = 'TenseBert768_mean'
+    scores = run_experiment_from_pc(folder, logreg, config, all_layers=False, standartize_data=True, verbose=False)
+    json.dump(scores, sys.stdout)
