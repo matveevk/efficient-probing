@@ -157,3 +157,5 @@ if __name__ == '__main__':
     with open('random_vs_kmeans.txt', 'w') as f:
         json.dump(random_scores, f)
         json.dump(kmeans_scores, f)
+        json.dump(golden_score, f)
+        json.dump(sample_score, f)
