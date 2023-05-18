@@ -1,6 +1,9 @@
+import gc
 import numpy as np
 import random
+import sys
 import torch
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader 
 from transformers import AutoModel, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
@@ -100,8 +103,40 @@ def build_data_ndarray(dataloader: DataLoader, **retriever_params) -> Tuple[np.n
     X, y = build_data_tensor(dataloader, **retriever_params)
     return X.cpu().numpy(), y.cpu().numpy()
 
-import gc
-from typing import Callable, Iterable, Optional
+
+def standardize_data(X_train: np.ndarray, X_test: np.ndarray, X_val: Optional[np.ndarray] = None) -> Tuple[np.ndarray, ...]:
+    """ standartizes input data with respect to X_train """
+    X_train_std = []  # holder for standartized train data
+    X_test_std = []  # holder for standartized test data
+    if X_val is not None:
+        X_val_std = []  # holder for standartized test data
+
+    for layer in range(X_train.shape[0]):
+        # transforming vectors from each layer
+        ss_i = StandardScaler(with_mean=True, with_std=True)
+        
+        X_train_i = ss_i.fit_transform(X_train[layer])
+        X_train_std.append(X_train_i)
+        
+        X_test_i = ss_i.transform(X_test[layer])
+        X_test_std.append(X_test_i)
+
+        if X_val is not None:
+            X_val_i = ss_i.transform(X_val[layer])
+            X_val_std.append(X_val_i)
+
+    # stack and free memory explicitly
+    X_train = np.stack(X_train_std)
+    del X_train_std
+    X_test = np.stack(X_test_std)
+    del X_test_std
+    if X_val is not None:
+        X_val = np.stack(X_val_std)
+        del X_val_std
+        gc.collect()
+        return X_train, X_test, X_val
+    gc.collect()
+    return X_train, X_test
 
 
 def run_experiment_from_pc(
@@ -114,7 +149,7 @@ def run_experiment_from_pc(
         sample_idx: Optional[Iterable] = None,
         feature_list: Optional[Iterable] = None,  # which features to use
         target_dim: Optional[int] = None,
-    ):
+    ) -> Dict[]:
     """ loads vectors, trains classifier and returns scores """
     X_train = np.load('{}/X_train.npy'.format(folder))
     y_train = np.load('{}/y_train.npy'.format(folder))
@@ -159,7 +194,7 @@ def run_experiment_from_pc(
                 X_test_pca.append(X_test_i)
         X_train = np.stack(X_train_pca)
         X_test = np.stack(X_test_pca)
-        # free memory implicitly
+        # free memory explicitly
         del X_train_pca
         del X_test_pca
         gc.collect()
@@ -173,7 +208,7 @@ def run_experiment_from_pc(
     scores = experiment(classifier_func, classifier_config, X_train, y_train, X_test, y_test,
                         all_layers=all_layers, verbose=verbose)
 
-    # free memory implicitly
+    # free memory explicitly
     del X_train
     del y_train
     del X_test
