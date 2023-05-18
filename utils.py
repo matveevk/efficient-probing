@@ -1,9 +1,10 @@
 import numpy as np
 import random
 import torch
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader 
 from transformers import AutoModel, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
-from typing import List, Tuple, Type
+from typing import Callable, Iterable, List, Optional, Tuple, Type
 
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -98,3 +99,85 @@ def build_data_ndarray(dataloader: DataLoader, **retriever_params) -> Tuple[np.n
     """
     X, y = build_data_tensor(dataloader, **retriever_params)
     return X.cpu().numpy(), y.cpu().numpy()
+
+import gc
+from typing import Callable, Iterable, Optional
+
+
+def run_experiment_from_pc(
+        folder: str,
+        classifier_func: Callable,
+        classifier_config: dict,
+        all_layers: bool = True,
+        standartize_data: bool = False,
+        verbose: bool = True,
+        sample_idx: Optional[Iterable] = None,
+        feature_list: Optional[Iterable] = None,  # which features to use
+        target_dim: Optional[int] = None,
+    ):
+    """ loads vectors, trains classifier and returns scores """
+    X_train = np.load('{}/X_train.npy'.format(folder))
+    y_train = np.load('{}/y_train.npy'.format(folder))
+    X_test = np.load('{}/X_test.npy'.format(folder))
+    y_test = np.load('{}/y_test.npy'.format(folder))
+
+    # reducing dimension
+    if feature_list is not None:
+        X_train = X_train[:, :, feature_list]
+        X_test = X_test[:, :, feature_list]
+
+    # standartizing data
+    if standartize_data:
+        X_train_std = []  # holder for standartized train data
+        X_test_std = []  # holder for standartized test data
+        for layer in range(X_train.shape[0]):
+            # transforming vectors from each layer
+            ss_i = StandardScaler(with_mean=True, with_std=True)
+            X_train_i = ss_i.fit_transform(X_train[layer])
+            X_test_i = ss_i.transform(X_test[layer])
+            X_train_std.append(X_train_i)
+            X_test_std.append(X_test_i)
+        X_train = np.stack(X_train_std)
+        X_test = np.stack(X_test_std)
+        # free memory implicitly
+        del X_train_std
+        del X_test_std
+        gc.collect()
+    
+    # reducing dimension (deprecated)
+    if target_dim is not None:
+        raise ValueError('Reducing dimension automaticaly is deprecated. Please pass the indicies explicitly')
+        X_train_pca = []  # holder for dim-reduced train data
+        X_test_pca = []  # holder for dim-reduced test data
+        for layer in range(X_train.shape[0]):
+            # transforming vectors from each layer
+            if all_layers or layer == X_train.shape[0] - 1:
+                pca = PCA(n_components=target_dim)
+                X_train_i = pca.fit_transform(X_train[layer])
+                X_test_i = pca.transform(X_test[layer])
+                X_train_pca.append(X_train_i)
+                X_test_pca.append(X_test_i)
+        X_train = np.stack(X_train_pca)
+        X_test = np.stack(X_test_pca)
+        # free memory implicitly
+        del X_train_pca
+        del X_test_pca
+        gc.collect()
+
+    # sampling data
+    if sample_idx is not None:
+        sample_idx = np.asarray(sample_idx)
+        X_train = X_train[:, sample_idx]
+        y_train = y_train[sample_idx]
+    
+    scores = experiment(classifier_func, classifier_config, X_train, y_train, X_test, y_test,
+                        all_layers=all_layers, verbose=verbose)
+
+    # free memory implicitly
+    del X_train
+    del y_train
+    del X_test
+    del y_test
+    gc.collect()
+
+    return scores
