@@ -2,12 +2,13 @@
 
 import numpy as np
 from scipy.stats import ttest_ind
+from skfeature.function.similarity_based import reliefF, fisher_score, trace_ratio, SPEC, lap_score  # please see https://github.com/jundongl/scikit-feature
 from typing import Callable, Iterable, Optional
-from .utils import RANDOM_STATE
+from .utils import RANDOM_STATE, set_seed
 
 
 def statistical_selection(X: np.ndarray, y: np.ndarray, ndim: Optional[int] = None, stat: str = 't-score') -> np.array:
-    """ Returns indicies of optimal features to select from X. 
+    """ Returns indicies of optimal features to select from X using statistical approach. 
         :param X: objects dataset, np.ndarray of size <n_objects, n_features>
         :param y: targets dataset, np.array of size n_objects
         :param ndim: the number of features to select. If None, all features are returned in order of their importance
@@ -32,6 +33,25 @@ def statistical_selection(X: np.ndarray, y: np.ndarray, ndim: Optional[int] = No
     
     importance_order = np.argsort(scores)[::-1]
     return importance_order[:ndim]
+
+
+def similarity_selection(X: np.ndarray, y: np.ndarray, similarity_callable: Callable, ndim: Optional[int] = None, sample_size: int = 1000, random_state: int = RANDOM_STATE) -> np.array:
+    """ Returns indicies of optimal features to select from sample of X using similarity-based approach. """
+    if ndim is None:
+        ndim = X.shape[-1]
+    set_seed(random_state)
+    sample_idx = np.random.choice(X.shape[0], sample_size)
+    scores = similarity_callable(X[sample_idx], y[sample_idx])
+    importance_order = np.argsort(scores)[::-1]
+    return importance_order[:ndim]
+
+
+def relieff_selection(*args, **kwargs) -> np.array:
+    return similarity_selection(*args, **kwargs, similarity_callable=reliefF.reliefF)
+
+
+def fisher_selection(X: np.ndarray, y: np.ndarray, ndim: Optional[int] = None, sample_size: int = 1000):
+    return similarity_selection(*args, **kwargs, similarity_callable=fisher_score.fisher_score)
 
 
 def make_list_of_feature_orders(X: np.ndarray, y: np.ndarray, order_func: Callable, *args, **kwargs) -> List[np.array]:
@@ -111,3 +131,19 @@ if __name__ == '__main__':
     # statistical: var selection
     var_scores = run_experiment_with_selected_features(X_train, y_train, X_test, y_test, step=4,
                                                    feature_orders=make_list_of_feature_orders(X_train, y_train, statistical_selection, stat='var'))
+
+    # similarity-based: fisher selection
+    fisher_scores = run_experiment_with_selected_features(X_train, y_train, X_test, y_test, step=4,
+                                                          feature_orders=make_list_of_feature_orders(X_train, y_train, fisher_selection))
+    
+    # similarity-based: relieff selection
+    relieff_scores = run_experiment_with_selected_features(X_train, y_train, X_test, y_test, step=4,
+                                                           feature_orders=make_list_of_feature_orders(X_train, y_train, relieff_selection))
+    
+    with open('feature_selection.txt', 'w') as f:
+        json.dump({
+            't-score': t_scores,
+            'var': var_scores,
+            'fisher': fisher_scores,
+            'relieff': relieff_scores,
+        }, f)
