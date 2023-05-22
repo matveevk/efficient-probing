@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score, roc_auc_score
 from time import time, sleep
 from typing import Any, Callable, Dict, Optional, Type
+from .utils import RANDOM_STATE
 
 
 
@@ -33,7 +34,7 @@ def sgd(X_train: ArrayLike, y_train: ArrayLike, X_test: ArrayLike, y_test: Array
     return sgd
 
 
-def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X_test: ArrayLike, y_test: ArrayLike, binary: bool = True) -> Tuple[float, float, float, float, float]:
+def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X_test: ArrayLike, y_test: ArrayLike, binary: bool = True) -> Tuple[float,...]:
     """
         Снимает скоры с sklearn-классификатора lr, возвращает
         :param lr: classifier
@@ -70,29 +71,29 @@ def sklearn_score(lr: ClassifierMixin, X_train: ArrayLike, y_train: ArrayLike, X
 # Sklearn probing experiment
 
 def experiment(
-    classifier_func: Callable,
-    classifier_config: Dict[str, Any] = {},
-    # model_name=None,
-    # model=None,
-    # tokenizer=None,
-    # model_class=BertModel,
-    # tokenizer_class=BertTokenizer,
-    X_train: Optional[ArrayLike] = None,
-    y_train: Optional[ArrayLike] = None,
-    X_test: Optional[ArrayLike] = None,
-    y_test: Optional[ArrayLike] = None,
-    # dataset=None,
-    # dataset_X=None,
-    # dataset_y=None,
-    # sentence_embeddings_func=get_sentence_embs,
-    all_layers: bool = True,
-    verbose: bool = True,
-):
+        classifier_func: Callable,
+        classifier_config: Dict[str, Any] = {},
+        # model_name=None,
+        # model=None,
+        # tokenizer=None,
+        # model_class=BertModel,
+        # tokenizer_class=BertTokenizer,
+        X_train: Optional[ArrayLike] = None,
+        y_train: Optional[ArrayLike] = None,
+        X_test: Optional[ArrayLike] = None,
+        y_test: Optional[ArrayLike] = None,
+        # dataset=None,
+        # dataset_X=None,
+        # dataset_y=None,
+        # sentence_embeddings_func=get_sentence_embs,
+        all_layers: bool = True,
+        verbose: bool = True,
+    ) -> dict:
     """ Runs one probing classification experiment with given parameters. Parameters for the classifier are set in the config dict """
     if verbose:
         print('Classifier: {}, {}'.format(classifier_func.__name__, classifier_config))
     layers_cnt = X_train.shape[0]
-    is_binary = True if len(np.unique(y_train)) == 2 else False
+    is_binary = len(np.unique(y_train)) == 2
 
     if verbose:
         print('probing...')
@@ -167,7 +168,7 @@ def run_experiment_from_pc(
             X_test_std.append(X_test_i)
         X_train = np.stack(X_train_std)
         X_test = np.stack(X_test_std)
-        # free memory implicitly
+        # free memory explicitly
         del X_train_std
         del X_test_std
         gc.collect()
@@ -180,7 +181,7 @@ def run_experiment_from_pc(
     scores = experiment(classifier_func, classifier_config, X_train, y_train, X_test, y_test,
                         all_layers=all_layers, verbose=verbose)
 
-    # free memory implicitly
+    # free memory explicitly
     del X_train
     del y_train
     del X_test
